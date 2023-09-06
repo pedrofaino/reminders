@@ -15,7 +15,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreen extends State<LoginScreen>{
 
-  dynamic token;
+  String? token;
   
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -27,11 +27,10 @@ class _LoginScreen extends State<LoginScreen>{
   }
 
   Future<void> _loadToken(BuildContext context) async{
-    final localContext = context;
     String? token = await getToken();
     if(token!=null){
-      Provider.of<TokenProvider>(localContext, listen: false).updateToken(token);
-      Navigator.pushReplacement(localContext, MaterialPageRoute(builder: (context) => HomeScreen()));
+      Provider.of<TokenProvider>(context, listen: false).updateToken(token);
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen()));
     }
   }
 
