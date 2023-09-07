@@ -40,23 +40,24 @@ class _LoginScreen extends State<LoginScreen>{
       "password": _passwordController.text,
     };
 
+    final localContext = context;
+
     try {
       final response = await Dio().post('http://10.0.2.2:5000/api/v1/auth/login', data: data);
 
       Map<String, dynamic> responseData = response.data;
 
+      dynamic refreshToken = responseData['refreshToken'];
       String token = responseData['token'];
       int expiresIn = responseData['expiresIn'];
       String userId = responseData['userId'];
 
       if (token.isNotEmpty) {
-        Provider.of<TokenProvider>(context, listen: false).userId = userId;
-        Provider.of<TokenProvider>(context, listen: false).token = token;
-        Provider.of<TokenProvider>(context, listen: false).expiresIn = expiresIn;
         SharedPreferences prefs = await SharedPreferences.getInstance();
         prefs.setString('token', token);
-        print(userId);
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen()));
+        prefs.setString('refreshToken', refreshToken);
+        Provider.of<TokenProvider>(localContext, listen: false).saveTokenUid(token, refreshToken, userId, expiresIn);
+        Navigator.pushReplacement(localContext, MaterialPageRoute(builder: (context) => HomeScreen()));
       } else {
         print("Inicio de sesión fallido");
       }
@@ -116,4 +117,19 @@ Future<String?> getToken() async {
 Future<void> removeToken() async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
   prefs.remove('token');
+}
+
+Future<void> saveRefreshToken(String token) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  prefs.setString('refreshToken', token);
+}
+
+Future<String?> getRefreshToken() async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  return prefs.getString('refreshToken');
+}
+
+Future<void> removeRefreshToken() async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  prefs.remove('refreshToken');
 }
