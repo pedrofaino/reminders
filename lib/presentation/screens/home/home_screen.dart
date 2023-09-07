@@ -27,19 +27,19 @@ class _HomeScreenState extends State<HomeScreen>{
     super.initState();
     _checkToken();
     getReminders();
+    Provider.of<TokenProvider>(context, listen: false).refreshTokenFunc();
   }
 
   Future<void>_checkToken()async{
     final tokenProvider = Provider.of<TokenProvider>(context, listen: false);
     final token = tokenProvider.token;
     if (token == null) {
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const  LoginScreen()));
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const  LoginScreen()));
     }
   }
 
   void parseAndSetReminders(Response<dynamic> response) {
   final dynamic jsonData = response.data;
-
     if (jsonData != null && jsonData is Map<String, dynamic> && jsonData.containsKey('reminders')) {
       final List<dynamic> remindersJson = jsonData['reminders'];
       final remindersProvider = Provider.of<RemindersProvider>(context, listen: false);
@@ -66,8 +66,9 @@ class _HomeScreenState extends State<HomeScreen>{
     try {
       final tokenProvider = Provider.of<TokenProvider>(context, listen: false);
       final token = tokenProvider.token;
+      final uid = tokenProvider.userId;
       final response = await Dio().get('http://10.0.2.2:5000/api/v1/reminders/search?query=',
-                                      data: { "uid": "649b271c7cdf3f897f79d5d7"}, 
+                                      data: { "uid": uid}, 
                                       options:Options(headers: {'Authorization':'Bearer $token'}));
       parseAndSetReminders(response);
     } catch (e) {
@@ -83,15 +84,12 @@ class _HomeScreenState extends State<HomeScreen>{
   
   Future<void> logout(BuildContext context) async {
     removeToken();
-    Provider.of<TokenProvider>(context,listen:false).removeToken();
+    Provider.of<TokenProvider>(context,listen:false).removeTokenUid();
     Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
   }
   
   @override
   Widget build(BuildContext context) {
-
-    String dropdownValue = list.first;
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(

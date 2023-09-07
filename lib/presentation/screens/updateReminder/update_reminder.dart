@@ -1,17 +1,21 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:reminders/presentation/providers/reminders_provider.dart';
 import 'package:reminders/presentation/providers/token_provider.dart';
 import 'package:reminders/presentation/screens/home/home_screen.dart';
 
-class AddReminder extends StatefulWidget {
-  const AddReminder({super.key});
+class UpdateReminder extends StatefulWidget {
+  final dynamic data;
+
+  const UpdateReminder({Key? key, required this.data}) : super(key: key);
 
   @override
-  State<AddReminder> createState() => _AddReminderState();
+  State<UpdateReminder> createState() => _UpdateReminderState();
 }
 
-class _AddReminderState extends State<AddReminder> {
+class _UpdateReminderState extends State<UpdateReminder> {
+  _UpdateReminderState();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
   final TextEditingController _whenController = TextEditingController();
@@ -20,10 +24,17 @@ class _AddReminderState extends State<AddReminder> {
   DateTime? _dateWhen = DateTime.now();
   bool? day = false;
   bool? week = false;
+  Reminder? reminder;
 
   @override
   void initState() {
     super.initState();
+    reminder = widget.data;
+    _descriptionController.text = reminder?.description ?? '';
+    _dateController.text = _formatDate(reminder?.date);
+    _whenController.text = _formatDate(reminder?.when);
+    day = reminder?.yesterday;
+    week = reminder?.week;
   }
 
   void _pickDate() async {
@@ -38,7 +49,7 @@ class _AddReminderState extends State<AddReminder> {
     _whenController.text = _formatDate(date);
   }
 
-  Future<void> saveReminders() async {
+  Future<void> updateReminder() async {
     String? uid = Provider.of<TokenProvider>(context, listen: false).userId;
     String? token = Provider.of<TokenProvider>(context, listen: false).token;
     Object data = {
@@ -50,10 +61,16 @@ class _AddReminderState extends State<AddReminder> {
       'yesterday': day,
       'week': week,
     };
-    final response = await Dio().post('http://10.0.2.2:5000/api/v1/reminders/',
-        data: data,
-        options: Options(headers: {'Authorization': 'Bearer $token'}));
-    
+    try {
+      final response = await Dio().patch(
+          'http://10.0.2.2:5000/api/v1/reminders/${reminder?.id}',
+          data: data,
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+          Navigator.pushReplacement(context,MaterialPageRoute(builder: (context) => const HomeScreen()));
+      print(response);
+    } catch (e) {
+      print(e);
+    }
   }
 
   Future<DateTime?> _showDatePicker() async {
@@ -187,13 +204,16 @@ class _AddReminderState extends State<AddReminder> {
                 children: [
                   Expanded(
                       child: TextButton(
-                          onPressed: () => saveReminders(),
+                          onPressed: () => updateReminder(),
                           child: const Text('Guardar',
                               style: TextStyle(
                                   color: Colors.black, fontSize: 20)))),
-                   Expanded(
+                  Expanded(
                       child: TextButton(
-                          onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen())),
+                          onPressed: () => Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const HomeScreen())),
                           child: const Text(
                             'Descartar',
                             style: TextStyle(color: Colors.black, fontSize: 20),
