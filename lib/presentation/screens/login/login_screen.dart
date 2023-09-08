@@ -1,22 +1,21 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:reminders/presentation/providers/token_provider.dart';
+import 'package:reminders/presentation/providers/auth_provider.dart';
 import 'package:reminders/presentation/screens/home/home_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
- 
   const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreen();
 }
 
-class _LoginScreen extends State<LoginScreen>{
-
+class _LoginScreen extends State<LoginScreen> {
   String? token;
-  
+  bool? isAuthenticated;
+
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -26,15 +25,26 @@ class _LoginScreen extends State<LoginScreen>{
     _loadToken(context);
   }
 
-  Future<void> _loadToken(BuildContext context) async{
-    String? token = await getToken();
-    if(token!=null){
-      Provider.of<TokenProvider>(context, listen: false).updateToken(token);
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen()));
+  Future<void> _loadToken(BuildContext context) async {
+    String? refreshToken = await getRefreshToken();
+    if (refreshToken != null) {
+      Provider.of<AuthProvider>(context, listen: false)
+          .updateRefresh(refreshToken);
+      try {
+        await Provider.of<AuthProvider>(context, listen: false)
+            .refreshTokenFunc();
+        isAuthenticated =
+            Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
+        isAuthenticated = true;
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (context) => HomeScreen()));
+      } catch (e) {
+        print(e);
+      }
     }
   }
 
-  Future<void> login() async {    
+  Future<void> login() async {
     final data = {
       "email": _usernameController.text,
       "password": _passwordController.text,
@@ -43,7 +53,8 @@ class _LoginScreen extends State<LoginScreen>{
     final localContext = context;
 
     try {
-      final response = await Dio().post('http://10.0.2.2:5000/api/v1/auth/login', data: data);
+      final response = await Dio()
+          .post('http://10.0.2.2:5000/api/v1/auth/login', data: data);
 
       Map<String, dynamic> responseData = response.data;
 
@@ -56,8 +67,13 @@ class _LoginScreen extends State<LoginScreen>{
         SharedPreferences prefs = await SharedPreferences.getInstance();
         prefs.setString('token', token);
         prefs.setString('refreshToken', refreshToken);
-        Provider.of<TokenProvider>(localContext, listen: false).saveTokenUid(token, refreshToken, userId, expiresIn);
-        Navigator.pushReplacement(localContext, MaterialPageRoute(builder: (context) => HomeScreen()));
+        isAuthenticated =
+            Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
+        isAuthenticated = true;
+        Provider.of<AuthProvider>(localContext, listen: false)
+            .saveTokenUid(token, refreshToken, userId, expiresIn);
+        Navigator.pushReplacement(localContext,
+            MaterialPageRoute(builder: (context) => HomeScreen()));
       } else {
         print("Inicio de sesión fallido");
       }
@@ -65,20 +81,33 @@ class _LoginScreen extends State<LoginScreen>{
       print("Error durante el inicio de sesión: $e");
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Center(
-          child: Row(
-            children: [
-          SizedBox(width: 150.0),
-          Text('reminders',style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30)),
-          Text('.',style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30,color: Color(0xFFD5C7BC))),
-          Text('.',style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30,color: Color(0xFFDEE8D5))),
-          Text('.',style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30,color: Color(0xFFE9FAE3)))
-        ]))),
-        body: Padding(
+      appBar: AppBar(
+          title: const Center(
+              child: Row(children: [
+        SizedBox(width: 150.0),
+        Text('reminders',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30)),
+        Text('.',
+            style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 30,
+                color: Color(0xFFD5C7BC))),
+        Text('.',
+            style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 30,
+                color: Color(0xFFDEE8D5))),
+        Text('.',
+            style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 30,
+                color: Color(0xFFE9FAE3)))
+      ]))),
+      body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -111,7 +140,7 @@ Future<void> saveToken(String token) async {
 
 Future<String?> getToken() async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
-  return prefs.getString('token');
+  return prefs.getString('refreshToken');
 }
 
 Future<void> removeToken() async {
