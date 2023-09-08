@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:reminders/presentation/providers/reminders_provider.dart';
-import 'package:reminders/presentation/providers/token_provider.dart';
+import 'package:reminders/presentation/providers/auth_provider.dart';
 import 'package:reminders/presentation/screens/home/home_screen.dart';
 
 class UpdateReminder extends StatefulWidget {
@@ -50,8 +50,8 @@ class _UpdateReminderState extends State<UpdateReminder> {
   }
 
   Future<void> updateReminder() async {
-    String? uid = Provider.of<TokenProvider>(context, listen: false).userId;
-    String? token = Provider.of<TokenProvider>(context, listen: false).token;
+    String? uid = Provider.of<AuthProvider>(context, listen: false).userId;
+    String? token = Provider.of<AuthProvider>(context, listen: false).token;
     Object data = {
       'description': _descriptionController.text,
       'date': _dateController.text,

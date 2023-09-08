@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:reminders/presentation/providers/reminders_provider.dart';
-import 'package:reminders/presentation/providers/token_provider.dart';
+import 'package:reminders/presentation/providers/auth_provider.dart';
 import 'package:reminders/presentation/screens/updateReminder/update_reminder.dart';
 
 class CardReminders extends StatelessWidget {
@@ -25,7 +25,7 @@ class CardReminders extends StatelessWidget {
         remindersProvider.remindersData?.reminders ?? [];
     Future <void> deleteReminder(id) async {
     try {
-      final token = Provider.of<TokenProvider>(context,listen: false).token;
+      final token = Provider.of<AuthProvider>(context,listen: false).token;
       final response = await Dio().delete('http://10.0.2.2:5000/api/v1/reminders/$id',
                       options: Options(headers: {
                   'Authorization': 'Bearer $token'

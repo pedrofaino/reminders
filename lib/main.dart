@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:reminders/config/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:reminders/presentation/providers/reminders_provider.dart';
-import 'package:reminders/presentation/providers/token_provider.dart';
+import 'package:reminders/presentation/providers/auth_provider.dart';
 import 'package:reminders/presentation/screens/login/login_screen.dart';
 
 void main() {
 
   runApp(
-    MultiProvider(providers: [ChangeNotifierProvider(create: (context) => TokenProvider()),ChangeNotifierProvider(create: (context) => RemindersProvider())],
+    MultiProvider(providers: [ChangeNotifierProvider(create: (context) => AuthProvider()),ChangeNotifierProvider(create: (context) => RemindersProvider())],
     child: const MyApp()
     )
     );
