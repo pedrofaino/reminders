@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
+import 'package:provider/provider.dart';
+import 'package:reminders/presentation/providers/api_provider.dart';
 
 class User {
   final String id;
@@ -23,6 +26,8 @@ class User {
 }
 
 class AuthProvider extends ChangeNotifier {
+  final logger = Logger();
+
   bool _isAuthenticated = false;
   String? _token;
   String? _refreshToken;
@@ -30,7 +35,7 @@ class AuthProvider extends ChangeNotifier {
   String? _email;
   int? _expiresIn;
   Timer? _refreshTokenTimer;
-  Map<dynamic,dynamic>? _user;
+  Map<dynamic, dynamic>? _user;
 
   bool get isAuthenticated => _isAuthenticated;
   String? get refreshToken => _refreshToken;
@@ -38,7 +43,7 @@ class AuthProvider extends ChangeNotifier {
   String? get userId => _userId;
   String? get email => _email;
   int? get expiresIn => _expiresIn;
-  Map<dynamic,dynamic>? get user => _user;
+  Map<dynamic, dynamic>? get user => _user;
 
   set isAuthenticated(isAuthenticated) {
     _isAuthenticated = isAuthenticated;
@@ -70,7 +75,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  set user(user){
+  set user(user) {
     _user = user;
     notifyListeners();
   }
@@ -81,7 +86,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   void saveTokenUid(String? newToken, String? refreshToken, String? newUid,
-      int newExpiresIn) {
+      int newExpiresIn, BuildContext context) {
     _token = newToken;
     _refreshToken = refreshToken;
     _userId = newUid;
@@ -90,7 +95,7 @@ class AuthProvider extends ChangeNotifier {
 
     notifyListeners();
 
-    startRefreshTokenTimer(newExpiresIn);
+    startRefreshTokenTimer(newExpiresIn, context);
   }
 
   void removeTokenUid() {
@@ -101,11 +106,11 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void startRefreshTokenTimer(int expiresIn) {
+  void startRefreshTokenTimer(int expiresIn, BuildContext context) {
     _cancelRefreshTokenTimer();
     final delay = (expiresIn * 1000) - 6000;
     _refreshTokenTimer = Timer((Duration(milliseconds: delay)),
-        () => {refreshTokenFunc(), print('ejecuto refresh token')});
+        () => {refreshTokenFunc(context), logger.i('Refresh Token')});
   }
 
   void _cancelRefreshTokenTimer() {
@@ -113,10 +118,12 @@ class AuthProvider extends ChangeNotifier {
     _refreshTokenTimer = null;
   }
 
-  Future<void> refreshTokenFunc() async {
+  Future<void> refreshTokenFunc(BuildContext context) async {
     try {
-      final response = await Dio().get(
-          'http://10.0.2.2:5000/api/v1/auth/app/refresh',
+      final apiConfigProvider =
+          Provider.of<ApiConfigProvider>(context, listen: false);
+      final apiConfig = apiConfigProvider.apiConfig;
+      final response = await Dio().get('${apiConfig.url}/auth/app/refresh',
           options: Options(headers: {'Authorization': 'Bearer $refreshToken'}));
       final newToken = response.data['token'];
       final newExpiresIn = response.data['expiresIn'];
@@ -124,20 +131,28 @@ class AuthProvider extends ChangeNotifier {
       final newEmail = response.data['email'];
       email = newEmail;
       userId = newUserId;
-      saveTokenUid(newToken, refreshToken, newUserId, newExpiresIn);
+      if (!context.mounted) return;
+      saveTokenUid(newToken, refreshToken, newUserId, newExpiresIn, context);
       isAuthenticated = true;
-      getInfoUser();
+      getInfoUser(context);
+      logger.i('Refresh Token initialized');
       notifyListeners();
     } catch (e) {
-      print('Error en el refresh${e}');
+      logger.e('Error refreshToken $e');
     }
   }
 
-  Future<void> getInfoUser() async {
-    final response = await Dio().get(
-        'http://10.0.2.2:5000/api/v1/user/info/$_email',
-        options: Options(headers: {'Authorization': 'Bearer $token'}));
-    user = response.data;
-    print(user);
+  Future<void> getInfoUser(BuildContext context) async {
+    try {
+      final apiConfigProvider =
+          Provider.of<ApiConfigProvider>(context, listen: false);
+      final apiConfig = apiConfigProvider.apiConfig;
+      final response = await Dio().get('${apiConfig.url}/user/info/$_email',
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      user = response.data;
+      logger.i(user);
+    } catch (e) {
+      logger.e('Error getInfoUser $e');
+    }
   }
 }

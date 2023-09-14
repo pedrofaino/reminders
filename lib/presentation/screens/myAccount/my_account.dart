@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
+import 'package:reminders/presentation/providers/api_provider.dart';
 import 'package:reminders/presentation/providers/auth_provider.dart';
 import 'package:reminders/presentation/screens/home/home_screen.dart';
 import 'package:reminders/presentation/screens/login/login_screen.dart';
@@ -23,9 +25,9 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
   }
 
   Future<void> removeToken() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.remove('token');
-    prefs.remove('refreshToken');
+    SharedPreferences pref = await SharedPreferences.getInstance();
+    pref.remove('token');
+    pref.remove('refreshToken');
   }
 
   Future<void> logout(BuildContext context) async {
@@ -107,6 +109,7 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
 }
 
 class _MyAccount extends StatelessWidget {
+  final logger = Logger();
   final dynamic user;
   final TextEditingController name;
   final TextEditingController lastName;
@@ -120,6 +123,8 @@ class _MyAccount extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Future<void> updateUser() async {
+      final apiConfigProvider = Provider.of<ApiConfigProvider>(context);
+      final apiConfig = apiConfigProvider.apiConfig;
       Object data = {
         "name": name.text,
         "lastName": lastName.text,
@@ -127,11 +132,14 @@ class _MyAccount extends StatelessWidget {
       };
       final token = Provider.of<AuthProvider>(context, listen: false).token;
       final uid = Provider.of<AuthProvider>(context, listen: false).userId;
-      final response = await Dio().patch(
-          'http://10.0.2.2:5000/api/v1/user/user/$uid',
-          data: data,
-          options: Options(headers: {'Authorization': 'Bearer $token'}));
-      print(response);
+      try {
+        final response = await Dio().patch('${apiConfig.url}/user/user/$uid',
+            data: data,
+            options: Options(headers: {'Authorization': 'Bearer $token'}));
+        logger.i('User updated: $response');
+      } catch (e) {
+        logger.e('Error in the promise for updateUser: $e');
+      }
     }
 
     return Column(children: [

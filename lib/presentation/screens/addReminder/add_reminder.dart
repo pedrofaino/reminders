@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
+import 'package:reminders/presentation/providers/api_provider.dart';
 import 'package:reminders/presentation/providers/auth_provider.dart';
 import 'package:reminders/presentation/screens/home/home_screen.dart';
 
@@ -12,6 +14,7 @@ class AddReminder extends StatefulWidget {
 }
 
 class _AddReminderState extends State<AddReminder> {
+  final logger = Logger();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
   final TextEditingController _whenController = TextEditingController();
@@ -39,6 +42,8 @@ class _AddReminderState extends State<AddReminder> {
   }
 
   Future<void> saveReminders() async {
+    final apiConfigProvider = Provider.of<ApiConfigProvider>(context);
+    final apiConfig = apiConfigProvider.apiConfig;
     String? uid = Provider.of<AuthProvider>(context, listen: false).userId;
     String? token = Provider.of<AuthProvider>(context, listen: false).token;
     Object data = {
@@ -50,10 +55,14 @@ class _AddReminderState extends State<AddReminder> {
       'yesterday': day,
       'week': week,
     };
-    final response = await Dio().post('http://10.0.2.2:5000/api/v1/reminders/',
-        data: data,
-        options: Options(headers: {'Authorization': 'Bearer $token'}));
-    
+    try {
+      final response = await Dio().post('${apiConfig.url}/reminders/',
+          data: data,
+          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      logger.i('Saved reminder: $response');
+    } catch (e) {
+      logger.e('Error in the promise for saveReminder: $e');
+    }
   }
 
   Future<DateTime?> _showDatePicker() async {
@@ -191,9 +200,12 @@ class _AddReminderState extends State<AddReminder> {
                           child: const Text('Guardar',
                               style: TextStyle(
                                   color: Colors.black, fontSize: 20)))),
-                   Expanded(
+                  Expanded(
                       child: TextButton(
-                          onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen())),
+                          onPressed: () => Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => HomeScreen())),
                           child: const Text(
                             'Descartar',
                             style: TextStyle(color: Colors.black, fontSize: 20),
