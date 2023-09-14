@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
+import 'package:reminders/presentation/providers/api_provider.dart';
 import 'package:reminders/presentation/providers/reminders_provider.dart';
 import 'package:reminders/presentation/screens/addReminder/add_reminder.dart';
 import 'package:reminders/presentation/screens/login/login_screen.dart';
@@ -8,16 +10,19 @@ import 'package:reminders/presentation/screens/myAccount/my_account.dart';
 import 'package:reminders/presentation/widgets/card_reminders.dart';
 import 'package:reminders/presentation/widgets/custom_button.dart';
 import 'package:reminders/presentation/providers/auth_provider.dart';
+import 'package:reminders/presentation/widgets/loading_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({Key? key}) : super(key: key);
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  bool isLoading = true;
+  final logger = Logger();
   dynamic reminders;
 
   @override
@@ -25,8 +30,15 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.isAuthenticated) {
-        getReminders();
+      if (authProvider.isAuthenticated == true) {
+        getReminders().then((_) => {
+              if (mounted)
+                {
+                  setState(() {
+                    isLoading = false;
+                  })
+                }
+            });
       } else {
         Navigator.pushReplacement(context,
             MaterialPageRoute(builder: (context) => const LoginScreen()));
@@ -34,14 +46,12 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void parseAndSetReminders(Response<dynamic> response) {
+  parseAndSetReminders(Response<dynamic> response) {
     final dynamic jsonData = response.data;
     if (jsonData != null &&
         jsonData is Map<String, dynamic> &&
         jsonData.containsKey('reminders')) {
       final List<dynamic> remindersJson = jsonData['reminders'];
-      final remindersProvider =
-          Provider.of<RemindersProvider>(context, listen: false);
       final List<Reminder> reminders = remindersJson.map((json) {
         return Reminder(
           id: json["_id"],
@@ -55,39 +65,47 @@ class _HomeScreenState extends State<HomeScreen> {
           v: json["__v"],
         );
       }).toList();
-      remindersProvider.setRemindersData(reminders);
+      return reminders;
     } else {
-      print('JSON no válido o sin la clave "reminders"');
+      logger.e('JSON no valid without key "reminders"');
     }
   }
 
   Future<void> getReminders() async {
+    final apiConfigProvider =
+        Provider.of<ApiConfigProvider>(context, listen: false);
+    final apiConfig = apiConfigProvider.apiConfig;
+    if (!context.mounted) return;
     try {
       final tokenProvider = Provider.of<AuthProvider>(context, listen: false);
       final token = tokenProvider.token;
       final uid = tokenProvider.userId;
       final response = await Dio().get(
-          'http://10.0.2.2:5000/api/v1/reminders/search?query=',
+          '${apiConfig.url}/reminders/search?query=',
           data: {"uid": uid},
           options: Options(headers: {'Authorization': 'Bearer $token'}));
-      parseAndSetReminders(response);
+      if (!context.mounted) return;
+      final remindersProvider =
+          Provider.of<RemindersProvider>(context, listen: false);
+      remindersProvider.setRemindersData(parseAndSetReminders(response));
+      logger.i(remindersProvider.remindersData);
     } catch (e) {
-      print('Error en la obtencion del reminder ${e}');
+      logger.e('Error in the promise for getReminders $e');
     }
   }
 
   Future<void> removeToken() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.remove('token');
-    prefs.remove('refreshToken');
+    SharedPreferences pref = await SharedPreferences.getInstance();
+    pref.remove('token');
+    pref.remove('refreshToken');
   }
 
   Future<void> logout(BuildContext context) async {
     removeToken();
     Provider.of<AuthProvider>(context, listen: false).removeTokenUid();
     Provider.of<AuthProvider>(context, listen: false).isAuthenticated = false;
-    Navigator.pushReplacement(context,
-            MaterialPageRoute(builder: (context) => const LoginScreen()));
+    Navigator.pushReplacement(
+        context, MaterialPageRoute(builder: (context) => const LoginScreen()));
   }
 
   @override
@@ -136,11 +154,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (result == 'action1') {
                     logout(context);
                   }
-                  if (result == 'action2'){
+                  if (result == 'action2') {
                     Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const MyAccountScreen()));
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const MyAccountScreen()));
                   }
                 },
                 child: const Row(
@@ -148,14 +166,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(
                       'Cuenta',
                       style: TextStyle(
-                          fontWeight: FontWeight.normal, fontSize: 15),
+                          fontWeight: FontWeight.normal, fontSize: 17),
                     ),
                     Icon(Icons.more_vert),
                   ],
                 ),
               ),
             ]))),
-        body: _HomeReminders(),
+        body:
+            isLoading ? const Center(child: LoadingWidget()) : _HomeReminders(),
         floatingActionButton: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [

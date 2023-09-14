@@ -1,18 +1,22 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
+import 'package:reminders/presentation/providers/api_provider.dart';
 import 'package:reminders/presentation/providers/auth_provider.dart';
 import 'package:reminders/presentation/screens/home/home_screen.dart';
+import 'package:reminders/presentation/widgets/google_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({Key? key}) : super(key: key);
 
   @override
   State<LoginScreen> createState() => _LoginScreen();
 }
 
 class _LoginScreen extends State<LoginScreen> {
+  final logger = Logger();
   String? token;
   bool? isAuthenticated;
 
@@ -22,39 +26,20 @@ class _LoginScreen extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _loadToken(context);
-  }
-
-  Future<void> _loadToken(BuildContext context) async {
-    String? refreshToken = await getRefreshToken();
-    if (refreshToken != null) {
-      Provider.of<AuthProvider>(context, listen: false)
-          .updateRefresh(refreshToken);
-      try {
-        await Provider.of<AuthProvider>(context, listen: false)
-            .refreshTokenFunc();
-        isAuthenticated =
-            Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
-        isAuthenticated = true;
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (context) => HomeScreen()));
-      } catch (e) {
-        print(e);
-      }
-    }
+    WidgetsFlutterBinding.ensureInitialized();
   }
 
   Future<void> login() async {
+    final apiConfigProvider =
+        Provider.of<ApiConfigProvider>(context, listen: false);
+    final apiConfig = apiConfigProvider.apiConfig;
     final data = {
       "email": _usernameController.text,
       "password": _passwordController.text,
     };
-
-    final localContext = context;
-
     try {
-      final response = await Dio()
-          .post('http://10.0.2.2:5000/api/v1/auth/login', data: data);
+      final response =
+          await Dio().post('${apiConfig.url}/auth/login', data: data);
 
       Map<String, dynamic> responseData = response.data;
 
@@ -64,21 +49,21 @@ class _LoginScreen extends State<LoginScreen> {
       String userId = responseData['userId'];
 
       if (token.isNotEmpty) {
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        prefs.setString('token', token);
-        prefs.setString('refreshToken', refreshToken);
-        isAuthenticated =
-            Provider.of<AuthProvider>(context, listen: false).isAuthenticated;
-        isAuthenticated = true;
-        Provider.of<AuthProvider>(localContext, listen: false)
-            .saveTokenUid(token, refreshToken, userId, expiresIn);
-        Navigator.pushReplacement(localContext,
-            MaterialPageRoute(builder: (context) => HomeScreen()));
+        SharedPreferences pref = await SharedPreferences.getInstance();
+        pref.setString('token', token);
+        pref.setString('refreshToken', refreshToken);
+        if (!context.mounted) return;
+        Provider.of<AuthProvider>(context, listen: false).isAuthenticated =
+            true;
+        Provider.of<AuthProvider>(context, listen: false)
+            .saveTokenUid(token, refreshToken, userId, expiresIn, context);
+        Navigator.pushReplacement(context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()));
       } else {
-        print("Inicio de sesión fallido");
+        logger.e("Login failed");
       }
     } catch (e) {
-      print("Error durante el inicio de sesión: $e");
+      logger.e("Login failed: $e");
     }
   }
 
@@ -126,6 +111,8 @@ class _LoginScreen extends State<LoginScreen> {
               onPressed: () => login(),
               child: const Text('Iniciar Sesión'),
             ),
+            const SizedBox(height: 20),
+            GoogleSignInButton(onPressed: () => googleLogin())
           ],
         ),
       ),
@@ -134,31 +121,31 @@ class _LoginScreen extends State<LoginScreen> {
 }
 
 Future<void> saveToken(String token) async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  prefs.setString('token', token);
+  SharedPreferences pref = await SharedPreferences.getInstance();
+  pref.setString('token', token);
 }
 
 Future<String?> getToken() async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  return prefs.getString('refreshToken');
+  SharedPreferences pref = await SharedPreferences.getInstance();
+  return pref.getString('refreshToken');
 }
 
 Future<void> removeToken() async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  prefs.remove('token');
+  SharedPreferences pref = await SharedPreferences.getInstance();
+  pref.remove('token');
 }
 
 Future<void> saveRefreshToken(String token) async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  prefs.setString('refreshToken', token);
+  SharedPreferences pref = await SharedPreferences.getInstance();
+  pref.setString('refreshToken', token);
 }
 
 Future<String?> getRefreshToken() async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  return prefs.getString('refreshToken');
+  SharedPreferences pref = await SharedPreferences.getInstance();
+  return pref.getString('refreshToken');
 }
 
 Future<void> removeRefreshToken() async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  prefs.remove('refreshToken');
+  SharedPreferences pref = await SharedPreferences.getInstance();
+  pref.remove('refreshToken');
 }

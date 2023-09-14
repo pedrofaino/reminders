@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
+import 'package:reminders/presentation/providers/api_provider.dart';
 import 'package:reminders/presentation/providers/reminders_provider.dart';
 import 'package:reminders/presentation/providers/auth_provider.dart';
 import 'package:reminders/presentation/screens/home/home_screen.dart';
@@ -15,6 +17,7 @@ class UpdateReminder extends StatefulWidget {
 }
 
 class _UpdateReminderState extends State<UpdateReminder> {
+  final logger = Logger();
   _UpdateReminderState();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
@@ -50,6 +53,8 @@ class _UpdateReminderState extends State<UpdateReminder> {
   }
 
   Future<void> updateReminder() async {
+    final apiConfigProvider = Provider.of<ApiConfigProvider>(context);
+    final apiConfig = apiConfigProvider.apiConfig;
     String? uid = Provider.of<AuthProvider>(context, listen: false).userId;
     String? token = Provider.of<AuthProvider>(context, listen: false).token;
     Object data = {
@@ -63,13 +68,15 @@ class _UpdateReminderState extends State<UpdateReminder> {
     };
     try {
       final response = await Dio().patch(
-          'http://10.0.2.2:5000/api/v1/reminders/${reminder?.id}',
+          '${apiConfig.url}/reminders/${reminder?.id}',
           data: data,
           options: Options(headers: {'Authorization': 'Bearer $token'}));
-          Navigator.pushReplacement(context,MaterialPageRoute(builder: (context) => const HomeScreen()));
-      print(response);
+      if (!context.mounted) return;
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (context) => const HomeScreen()));
+      logger.i('Reminder updated: $response');
     } catch (e) {
-      print(e);
+      logger.e('Error in the promise for updateReminder: $e');
     }
   }
 

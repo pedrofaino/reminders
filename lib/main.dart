@@ -1,21 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:reminders/config/theme/api_config.dart';
 import 'package:reminders/config/theme/app_theme.dart';
 import 'package:provider/provider.dart';
+import 'package:reminders/presentation/providers/api_provider.dart';
 import 'package:reminders/presentation/providers/reminders_provider.dart';
 import 'package:reminders/presentation/providers/auth_provider.dart';
-import 'package:reminders/presentation/screens/login/login_screen.dart';
+import 'package:reminders/presentation/screens/loadingScreen/loading_screen.dart';
+import 'package:logger/logger.dart';
 
-void main() {
 
-  runApp(
-    MultiProvider(providers: [ChangeNotifierProvider(create: (context) => AuthProvider()),ChangeNotifierProvider(create: (context) => RemindersProvider())],
-    child: const MyApp()
-    )
-    );
+Future <void> main() async {
+  Logger.level = Level.debug;
+
+  final apiConfigProvider = ApiConfigProvider();
+  apiConfigProvider.updateApiConfig(ApiConfig.development());
+
+  runApp(MultiProvider(providers: [
+    ChangeNotifierProvider(create: (context) => AuthProvider()),
+    ChangeNotifierProvider(create: (context) => RemindersProvider()),
+    ChangeNotifierProvider(create: (context) => ApiConfigProvider()),
+    ChangeNotifierProvider.value(value: apiConfigProvider)
+  ], child: const MyApp()));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   // This widget is the root of your application.
   @override
@@ -23,8 +32,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Reminders',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme( selectedColor: 1).theme(),
-      home: const LoginScreen(),
+      theme: AppTheme(selectedColor: 1).theme(),
+      home: const LoadingPage(),
     );
   }
 }
