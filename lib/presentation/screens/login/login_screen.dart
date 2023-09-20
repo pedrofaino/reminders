@@ -1,11 +1,13 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
 import 'package:reminders/presentation/providers/api_provider.dart';
 import 'package:reminders/presentation/providers/auth_provider.dart';
 import 'package:reminders/presentation/screens/home/home_screen.dart';
-import 'package:reminders/presentation/widgets/google_button.dart';
+import 'package:reminders/presentation/screens/register/register_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -29,6 +31,26 @@ class _LoginScreen extends State<LoginScreen> {
     WidgetsFlutterBinding.ensureInitialized();
   }
 
+  void mostrarAlerta(String titulo, String mensaje) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(titulo),
+          content: Text(mensaje),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Cierra la alerta
+              },
+              child: Text('Cerrar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> login() async {
     final apiConfigProvider =
         Provider.of<ApiConfigProvider>(context, listen: false);
@@ -37,10 +59,9 @@ class _LoginScreen extends State<LoginScreen> {
       "email": _usernameController.text,
       "password": _passwordController.text,
     };
-    try {
+    try{
       final response =
-          await Dio().post('${apiConfig.url}/auth/login', data: data);
-
+          await Dio().post('${apiConfig.url}/auth/loginApp', data: data);
       Map<String, dynamic> responseData = response.data;
 
       dynamic refreshToken = responseData['refreshToken'];
@@ -63,7 +84,31 @@ class _LoginScreen extends State<LoginScreen> {
         logger.e("Login failed");
       }
     } catch (e) {
-      logger.e("Login failed: $e");
+      logger.e(e);
+      if (e is DioException) {
+        final int? statusCode = e.response?.statusCode;
+        if (statusCode == 401) {
+          mostrarAlerta("Credenciales incorrectas",
+              "Por favor revise su usuario y contraseña");
+        } else if (statusCode == 403) {
+          mostrarAlerta("Usuario no confirmado",
+              "El email del usuario que intenta iniciar sesión no esta confirmado, por favor revise su correo electronico para confirmarlo.");
+        } else {
+          mostrarAlerta("Error", "Error en el inicio de sesión");
+        }
+      }else{
+        logger.e("Login failed: $e");
+        mostrarAlerta("Error", "Error en el inicio de sesión");
+      }
+    }
+  }
+
+  Future<void> loginGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      logger.i(googleUser);
+    } catch (e) {
+      logger.e(e);
     }
   }
 
@@ -72,8 +117,9 @@ class _LoginScreen extends State<LoginScreen> {
     return Scaffold(
       appBar: AppBar(
           title: const Center(
-              child: Row(children: [
-        SizedBox(width: 150.0),
+              child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
         Text('reminders',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30)),
         Text('.',
@@ -112,7 +158,29 @@ class _LoginScreen extends State<LoginScreen> {
               child: const Text('Iniciar Sesión'),
             ),
             const SizedBox(height: 20),
-            GoogleSignInButton(onPressed: () => googleLogin())
+            RichText(
+              text: TextSpan(
+                text: '¿No tienes una cuenta? ',
+                style: const TextStyle(color: Colors.black),
+                children: <TextSpan>[
+                  TextSpan(
+                    text: 'Regístrate',
+                    style: const TextStyle(
+                      color: Colors.blueAccent,
+                      decoration: TextDecoration.underline,
+                    ),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () {
+                        Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const RegisterScreen()));
+                      },
+                  ),
+                ],
+              ),
+            )
+            // GoogleSignInButton(onPressed: () => loginGoogle())
           ],
         ),
       ),
