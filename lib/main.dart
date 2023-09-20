@@ -13,7 +13,7 @@ Future <void> main() async {
   Logger.level = Level.debug;
 
   final apiConfigProvider = ApiConfigProvider();
-  apiConfigProvider.updateApiConfig(ApiConfig.development());
+  apiConfigProvider.updateApiConfig(ApiConfig.production());
 
   runApp(MultiProvider(providers: [
     ChangeNotifierProvider(create: (context) => AuthProvider()),

@@ -36,6 +36,7 @@ class _UpdateReminderState extends State<UpdateReminder> {
     _descriptionController.text = reminder?.description ?? '';
     _dateController.text = _formatDate(reminder?.date);
     _whenController.text = _formatDate(reminder?.when);
+    logger.i("$_date $_dateWhen");
     day = reminder?.yesterday;
     week = reminder?.week;
   }

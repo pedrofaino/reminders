@@ -27,6 +27,8 @@ class _AddReminderState extends State<AddReminder> {
   @override
   void initState() {
     super.initState();
+    logger.i(_date);
+    logger.i(_dateWhen);
   }
 
   void _pickDate() async {
