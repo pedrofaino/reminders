@@ -4,7 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 class GoogleSignInButton extends StatelessWidget {
   final VoidCallback onPressed;
 
-  const GoogleSignInButton({required this.onPressed});
+  const GoogleSignInButton({Key? key, required this.onPressed}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

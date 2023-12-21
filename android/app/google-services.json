@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "711797277116",
+    "project_id": "reminders-387618",
+    "storage_bucket": "reminders-387618.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:711797277116:android:911892a0a6b41b6246abb9",
+        "android_client_info": {
+          "package_name": "com.example.reminders"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "711797277116-qu27pd1hcj84to5oo61ih6h0lf8t8m28.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.reminders",
+            "certificate_hash": "522029d93e01ef664ba1db576cf8a606250a6b65"
+          }
+        },
+        {
+          "client_id": "711797277116-t0k57psjsqie955kaev76fb41lqf1r94.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.reminders",
+            "certificate_hash": "369e81303c94072acaf06b3c1226ba9c4cdc6bc6"
+          }
+        },
+        {
+          "client_id": "711797277116-s2sivp74an1vc72onfp8dn9pcv6ioc4t.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA98i9wtmEc0Jb6cVJljscXNE3kr8UyDFU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "711797277116-r0j2bl2ofh5crml40utmqihavrae2rgm.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

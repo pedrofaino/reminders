@@ -4,7 +4,7 @@ class ApiConfig {
   ApiConfig({required this.url});
 
   factory ApiConfig.developmentPhone() {
-    return ApiConfig(url: 'http://192.168.0.1/api/v1');
+    return ApiConfig(url: 'http://192.168.0.150:5000/api/v1');
   }
 
   factory ApiConfig.development() {

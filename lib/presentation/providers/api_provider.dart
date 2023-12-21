@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:reminders/config/theme/api_config.dart';
+import 'package:reminders/config/api_config.dart';
 
 
 class ApiConfigProvider extends ChangeNotifier {
