@@ -1,13 +1,17 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
+import 'package:reminders/config/deep_links.dart';
 import 'package:reminders/presentation/providers/api_provider.dart';
 import 'package:reminders/presentation/providers/auth_provider.dart';
-import 'package:reminders/presentation/screens/home/home_screen.dart';
-import 'package:reminders/presentation/screens/register/register_screen.dart';
+import 'package:reminders/presentation/widgets/google_button.dart';
+import 'package:reminders/presentation/widgets/title.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -21,6 +25,7 @@ class _LoginScreen extends State<LoginScreen> {
   final logger = Logger();
   String? token;
   bool? isAuthenticated;
+  bool obscureText = true;
 
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -28,6 +33,7 @@ class _LoginScreen extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    initURIHandler(context);
     WidgetsFlutterBinding.ensureInitialized();
   }
 
@@ -43,7 +49,7 @@ class _LoginScreen extends State<LoginScreen> {
               onPressed: () {
                 Navigator.of(context).pop(); // Cierra la alerta
               },
-              child: Text('Cerrar'),
+              child: const Text('Cerrar'),
             ),
           ],
         );
@@ -59,7 +65,7 @@ class _LoginScreen extends State<LoginScreen> {
       "email": _usernameController.text,
       "password": _passwordController.text,
     };
-    try{
+    try {
       final response =
           await Dio().post('${apiConfig.url}/auth/loginApp', data: data);
       Map<String, dynamic> responseData = response.data;
@@ -78,8 +84,7 @@ class _LoginScreen extends State<LoginScreen> {
             true;
         Provider.of<AuthProvider>(context, listen: false)
             .saveTokenUid(token, refreshToken, userId, expiresIn, context);
-        Navigator.pushReplacement(context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()));
+        context.go('/');
       } else {
         logger.e("Login failed");
       }
@@ -96,7 +101,7 @@ class _LoginScreen extends State<LoginScreen> {
         } else {
           mostrarAlerta("Error", "Error en el inicio de sesión");
         }
-      }else{
+      } else {
         logger.e("Login failed: $e");
         mostrarAlerta("Error", "Error en el inicio de sesión");
       }
@@ -104,9 +109,51 @@ class _LoginScreen extends State<LoginScreen> {
   }
 
   Future<void> loginGoogle() async {
+    final apiConfigProvider =
+        Provider.of<ApiConfigProvider>(context, listen: false);
+    final apiConfig = apiConfigProvider.apiConfig;
+    const devKey =
+        '711797277116-s2sivp74an1vc72onfp8dn9pcv6ioc4t.apps.googleusercontent.com';
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      logger.i(googleUser);
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        clientId: devKey,
+        scopes: [
+          'https://www.googleapis.com/auth/userinfo.email',
+          'openid',
+          'https://www.googleapis.com/auth/userinfo.profile',
+        ],
+      );
+      try {
+        final googleUserAccount = await googleSignIn.signIn();
+        final googleAuth = await googleUserAccount?.authentication;
+        if (googleAuth != null) {
+          final response = await Dio()
+              .get('${apiConfig.url}/auth/session/auth0/googleApp', data: {
+            'access_token': googleAuth.accessToken,
+            'id_token': googleAuth.idToken
+          });
+          Map<String, dynamic> responseData = response.data;
+          dynamic refreshToken = responseData['refreshToken'];
+          String token = responseData['token'];
+          int expiresIn = responseData['expiresIn'];
+          String userId = responseData['userId'];
+          if (token.isNotEmpty) {
+            SharedPreferences pref = await SharedPreferences.getInstance();
+            pref.setString('token', token);
+            pref.setString('refreshToken', refreshToken);
+            if (!context.mounted) return;
+            Provider.of<AuthProvider>(context, listen: false).isAuthenticated =
+                true;
+            Provider.of<AuthProvider>(context, listen: false)
+                .saveTokenUid(token, refreshToken, userId, expiresIn, context);
+            context.go('/');
+          } else {
+            logger.e("Login failed");
+          }
+        }
+      } catch (error) {
+        logger.e(error);
+      }
     } catch (e) {
       logger.e(e);
     }
@@ -115,29 +162,7 @@ class _LoginScreen extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-          title: const Center(
-              child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-        Text('reminders',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30)),
-        Text('.',
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 30,
-                color: Color(0xFFD5C7BC))),
-        Text('.',
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 30,
-                color: Color(0xFFDEE8D5))),
-        Text('.',
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 30,
-                color: Color(0xFFE9FAE3)))
-      ]))),
+      appBar: AppBar(title: const TitleReminders()),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -147,10 +172,24 @@ class _LoginScreen extends State<LoginScreen> {
               controller: _usernameController,
               decoration: const InputDecoration(labelText: 'Usuario'),
             ),
-            TextField(
+            TextFormField(
               controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Contraseña'),
+              obscureText: obscureText,
+              decoration: InputDecoration(
+                  labelText: 'Contraseña',
+                  suffixIcon: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        obscureText = !obscureText;
+                      });
+                    },
+                    child: Icon(
+                      obscureText ? Icons.visibility : Icons.visibility_off,
+                      semanticLabel: obscureText
+                          ? 'Mostrar contraseña'
+                          : 'Ocultar contraseña',
+                    ),
+                  )),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
@@ -164,23 +203,22 @@ class _LoginScreen extends State<LoginScreen> {
                 style: const TextStyle(color: Colors.black),
                 children: <TextSpan>[
                   TextSpan(
-                    text: 'Regístrate',
-                    style: const TextStyle(
-                      color: Colors.blueAccent,
-                      decoration: TextDecoration.underline,
-                    ),
-                    recognizer: TapGestureRecognizer()
-                      ..onTap = () {
-                        Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const RegisterScreen()));
-                      },
-                  ),
+                      text: 'Regístrate',
+                      style: const TextStyle(
+                        color: Colors.blueAccent,
+                        decoration: TextDecoration.underline,
+                      ),
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () {
+                          context.goNamed('register');
+                        }),
                 ],
               ),
-            )
-            // GoogleSignInButton(onPressed: () => loginGoogle())
+            ),
+            const SizedBox(
+              height: 80,
+            ),
+            GoogleSignInButton(onPressed: () => loginGoogle())
           ],
         ),
       ),

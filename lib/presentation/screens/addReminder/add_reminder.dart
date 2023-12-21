@@ -1,10 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
 import 'package:reminders/presentation/providers/api_provider.dart';
 import 'package:reminders/presentation/providers/auth_provider.dart';
-import 'package:reminders/presentation/screens/home/home_screen.dart';
+import 'package:reminders/presentation/providers/reminders_provider.dart';
+import 'package:reminders/presentation/widgets/title.dart';
 
 class AddReminder extends StatefulWidget {
   const AddReminder({super.key});
@@ -44,14 +46,19 @@ class _AddReminderState extends State<AddReminder> {
   }
 
   Future<void> saveReminders() async {
-    final apiConfigProvider = Provider.of<ApiConfigProvider>(context);
+    final remindersProvider =
+        Provider.of<RemindersProvider>(context, listen: false);
+    final apiConfigProvider =
+        Provider.of<ApiConfigProvider>(context, listen: false);
     final apiConfig = apiConfigProvider.apiConfig;
     String? uid = Provider.of<AuthProvider>(context, listen: false).userId;
     String? token = Provider.of<AuthProvider>(context, listen: false).token;
+    String? email = Provider.of<AuthProvider>(context, listen: false).email;
     Object data = {
       'description': _descriptionController.text,
-      'date': _dateController.text,
-      'when': _whenController.text,
+      'date': _date?.toIso8601String(),
+      'when': _dateWhen?.toIso8601String(),
+      'email': email,
       'other': _noteController.text,
       'uid': uid,
       'yesterday': day,
@@ -62,6 +69,9 @@ class _AddReminderState extends State<AddReminder> {
           data: data,
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       logger.i('Saved reminder: $response');
+      if (!context.mounted) return;
+        await remindersProvider.loadReminders(context);
+      context.pop();
     } catch (e) {
       logger.e('Error in the promise for saveReminder: $e');
     }
@@ -82,34 +92,14 @@ class _AddReminderState extends State<AddReminder> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+        resizeToAvoidBottomInset: false,
         backgroundColor: Colors.white,
         appBar: AppBar(
-            backgroundColor: Colors.black12,
-            title: const Center(
-                child: Row(children: [
-              SizedBox(width: 150.0),
-              Text('reminders',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30)),
-              Text('.',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 30,
-                      color: Color(0xFFD5C7BC))),
-              Text('.',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 30,
-                      color: Color(0xFFDEE8D5))),
-              Text('.',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 30,
-                      color: Color(0xFFE9FAE3)))
-            ]))),
+            backgroundColor: Colors.black12, title: const TitleReminders()),
         body: Column(
           children: [
             Container(
-              height: 650,
+              height: 700,
               decoration: const BoxDecoration(
                   color: Colors.black12,
                   borderRadius: BorderRadius.only(
@@ -198,18 +188,15 @@ class _AddReminderState extends State<AddReminder> {
                 children: [
                   Expanded(
                       child: TextButton(
-                          onPressed: () => saveReminders(),
-                          child: const Text('Guardar',
+                          onPressed: () => context.go('/'),
+                          child: const Text('Descartar',
                               style: TextStyle(
                                   color: Colors.black, fontSize: 20)))),
                   Expanded(
                       child: TextButton(
-                          onPressed: () => Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => HomeScreen())),
+                          onPressed: () => saveReminders(),
                           child: const Text(
-                            'Descartar',
+                            'Guardar',
                             style: TextStyle(color: Colors.black, fontSize: 20),
                           )))
                 ],

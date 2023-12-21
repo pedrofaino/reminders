@@ -2,7 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
+import 'package:reminders/config/deep_links.dart';
 import 'package:reminders/presentation/providers/api_provider.dart';
+import 'package:reminders/presentation/widgets/title.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -15,6 +17,8 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreen extends State<RegisterScreen> {
   final logger = Logger();
   String? email;
+  bool obscureText = true;
+  bool obscureTextRe = true;
 
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -23,6 +27,7 @@ class _RegisterScreen extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
+    initURIHandler(context);
     WidgetsFlutterBinding.ensureInitialized();
   }
 
@@ -30,8 +35,7 @@ class _RegisterScreen extends State<RegisterScreen> {
     final apiProvider =
         Provider.of<ApiConfigProvider>(context, listen: false).apiConfig;
     if (_passwordController.text != _rePasswordController.text) {
-      mostrarAlerta(
-          'Error en la contraseña', 'Las contraseñas deben ser iguales');
+      showAlert('Error en la contraseña', 'Las contraseñas deben ser iguales');
       return;
     }
     final data = {
@@ -46,29 +50,29 @@ class _RegisterScreen extends State<RegisterScreen> {
           await Dio().post('${apiProvider.url}/auth/registerApp', data: data);
       logger.i(response);
       if (response.statusCode == 201) {
-        mostrarAlerta('Registro exitoso',
+        showAlert('Registro exitoso',
             '¡Tu registro ha sido exitoso! Se ha enviado un mail tu correo para confirmarlo.');
       } else {
-        mostrarAlerta('Error de registro', 'Hubo un error al registrar.');
+        showAlert('Error de registro', 'Hubo un error al registrar.');
       }
     } catch (e) {
       logger.e(e);
     }
   }
 
-  void mostrarAlerta(String titulo, String mensaje) {
+  void showAlert(String tittle, String message) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(titulo),
-          content: Text(mensaje),
+          title: Text(tittle),
+          content: Text(message),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Cierra la alerta
+                Navigator.of(context).pop();
               },
-              child: Text('Cerrar'),
+              child: const Text('Cerrar'),
             ),
           ],
         );
@@ -79,28 +83,7 @@ class _RegisterScreen extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-            title: const Center(
-                child: Row(children: [
-          SizedBox(width: 150.0),
-          Text('reminders',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30)),
-          Text('.',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 30,
-                  color: Color(0xFFD5C7BC))),
-          Text('.',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 30,
-                  color: Color(0xFFDEE8D5))),
-          Text('.',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 30,
-                  color: Color(0xFFE9FAE3))),
-        ]))),
+        appBar: AppBar(title: const TitleReminders()),
         body: Column(children: [
           const SizedBox(
             height: 90,
@@ -122,16 +105,45 @@ class _RegisterScreen extends State<RegisterScreen> {
                   controller: _usernameController,
                   decoration: const InputDecoration(labelText: 'Email'),
                 ),
-                TextField(
+                TextFormField(
                   controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Contraseña'),
+                  obscureText: obscureText,
+                  decoration: InputDecoration(
+                      labelText: 'Contraseña',
+                      suffixIcon: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            obscureText = !obscureText;
+                          });
+                        },
+                        child: Icon(
+                          obscureText ? Icons.visibility : Icons.visibility_off,
+                          semanticLabel: obscureText
+                              ? 'Mostrar contraseña'
+                              : 'Ocultar contraseña',
+                        ),
+                      )),
                 ),
-                TextField(
+                TextFormField(
                   controller: _rePasswordController,
-                  obscureText: true,
-                  decoration:
-                      const InputDecoration(labelText: 'Repita la contraseña'),
+                  obscureText: obscureTextRe,
+                  decoration: InputDecoration(
+                      labelText: 'Repite la contraseña',
+                      suffixIcon: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            obscureTextRe = !obscureTextRe;
+                          });
+                        },
+                        child: Icon(
+                          obscureTextRe
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                          semanticLabel: obscureTextRe
+                              ? 'Mostrar contraseña'
+                              : 'Ocultar contraseña',
+                        ),
+                      )),
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(

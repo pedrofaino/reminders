@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
 import 'package:reminders/presentation/providers/auth_provider.dart';
-import 'package:reminders/presentation/screens/home/home_screen.dart';
-import 'package:reminders/presentation/screens/login/login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class LoadingPage extends StatefulWidget {
-  const LoadingPage({super.key});
+class LoadingScreen extends StatefulWidget {
+  const LoadingScreen({super.key});
 
   @override
-  State<LoadingPage> createState() => _LoadingPageState();
+  State<LoadingScreen> createState() => _LoadingScreenState();
 }
 
-class _LoadingPageState extends State<LoadingPage> {
+class _LoadingScreenState extends State<LoadingScreen> {
   bool isLoading = true;
   bool _isFirstBuild = true;
   final logger = Logger();
@@ -30,19 +29,19 @@ class _LoadingPageState extends State<LoadingPage> {
       if (refreshToken != null) {
         isLoading = false;
         logger.i('el refresh no es null');
+        if (!context.mounted) return;
         Provider.of<AuthProvider>(context, listen: false)
             .updateRefresh(refreshToken);
         await Provider.of<AuthProvider>(context, listen: false)
             .refreshTokenFunc(context);
         logger.i('ejecuto funcion refresh');
+        if (!context.mounted) return;
         Provider.of<AuthProvider>(context, listen: false).isAuthenticated =
             true;
-        Navigator.pushReplacement(context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()));
+        context.go('/');
       } else {
         if (!context.mounted) return;
-        Navigator.pushReplacement(context,
-            MaterialPageRoute(builder: (context) => const LoginScreen()));
+        context.go('/login');
       }
     } catch (e) {
       logger.e('The token loading failed: $e');
@@ -82,7 +81,7 @@ class _LoadingPageState extends State<LoadingPage> {
                   '.',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 30,
+                    fontSize: 40,
                     color: Color(0xFFD5C7BC),
                   ),
                 ),
@@ -90,7 +89,7 @@ class _LoadingPageState extends State<LoadingPage> {
                   '.',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 30,
+                    fontSize: 40,
                     color: Color(0xFFDEE8D5),
                   ),
                 ),
@@ -98,7 +97,7 @@ class _LoadingPageState extends State<LoadingPage> {
                   '.',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 30,
+                    fontSize: 40,
                     color: Color(0xFFE9FAE3),
                   ),
                 ),

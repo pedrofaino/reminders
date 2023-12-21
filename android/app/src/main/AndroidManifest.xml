@@ -23,7 +23,6 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-
             <!-- Deep Links -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -31,8 +30,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <!-- Accepts URIs that begin with YOUR_SCHEME://YOUR_HOST -->
                 <data
-                    android:scheme="http"
-                    android:host="remindersconfirmation.com"/>
+                    android:scheme="reminders"
+                    android:host="confirmation.com"/>
             </intent-filter>
 
         </activity>

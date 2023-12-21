@@ -1,54 +1,61 @@
 import 'dart:async';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
 import 'package:reminders/presentation/providers/api_provider.dart';
 import 'package:reminders/presentation/providers/auth_provider.dart';
-import 'package:reminders/presentation/screens/home/home_screen.dart';
+import 'package:reminders/presentation/widgets/title.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uni_links/uni_links.dart';
 
-class ConfirmationPage extends StatefulWidget {
-  const ConfirmationPage({super.key});
-
+class ConfirmationScreen extends StatefulWidget {
+  final Uri? uri;
+  const ConfirmationScreen({Key? key, this.uri}) : super(key: key);
+  
   @override
-  State<ConfirmationPage> createState() => _ConfirmationPageState();
+  State<ConfirmationScreen> createState() => _ConfirmationScreenState();
 }
 
-class _ConfirmationPageState extends State<ConfirmationPage> {
+class _ConfirmationScreenState extends State<ConfirmationScreen> {
   final logger = Logger();
   String? confirmationEmail;
-  StreamSubscription? _sub;
 
-  @override
-  void initState() {
-    super.initState();
-    initUniLinks();
+    void showAlert(String tittle, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(tittle),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cerrar'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
-   Future<void> initUniLinks() async {
-    _sub = linkStream.listen((String? link) {
-      logger.i('llego aca $link');
-    });
-    final initialLink = await getInitialLink();
-    if (initialLink != null) {
-      final uri = Uri.parse(initialLink);
-      logger.i(uri.queryParameters['email']);
-      if(uri.queryParameters['email'] != null){
-        String? email = uri.queryParameters['email'];
-        confirmationEmail = email;
-      }
-    }
-   } 
+  void handleUri (uri){
+    final email = uri.queryParameters['email'];
+    logger.i(email);
+    confirmationEmail = email;
+  }
 
   Future<void> confirmation(String? email) async {
     final apiProvider =
         Provider.of<ApiConfigProvider>(context, listen: false).apiConfig;
+    final data = {
+      "email":confirmationEmail
+    };
     try {
-      final response =
-          await Dio().post('${apiProvider.url}/auth/confirmationApp',data:email);
+      final response = await Dio()
+          .post('${apiProvider.url}/auth/confirmationApp', data:data);
 
       Map<String, dynamic> responseData = response.data;
 
@@ -66,14 +73,21 @@ class _ConfirmationPageState extends State<ConfirmationPage> {
             true;
         Provider.of<AuthProvider>(context, listen: false)
             .saveTokenUid(token, refreshToken, userId, expiresIn, context);
-        Navigator.pushReplacement(context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()));
+        context.go('/');
       } else {
         logger.e("confirmation failed");
+        showAlert('Fallo el metodo de confirmación', 'Intente confrmar su email nuevamente');
       }
     } catch (e) {
       logger.e("confirmation failed: $e");
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final uri = widget.uri;
+    handleUri(uri);
   }
 
   @override
@@ -91,49 +105,15 @@ class _ConfirmationPageState extends State<ConfirmationPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Reminders',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 40,
-                      color: Colors.black),
-                ),
-                Text(
-                  '.',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 30,
-                    color: Color(0xFFD5C7BC),
-                  ),
-                ),
-                Text(
-                  '.',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 30,
-                    color: Color(0xFFDEE8D5),
-                  ),
-                ),
-                Text(
-                  '.',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 30,
-                    color: Color(0xFFE9FAE3),
-                  ),
-                ),
-              ],
-            ),
+            const TitleReminders(),
             const SizedBox(
               height: 50,
             ),
-            const Text(
-                'Su cuenta fue confirmada, para ir al inicio precione el siguiente boton'),
+            const Text('Bien hecho! Ya confirmaste tu email. Presiona inicio para comenzar a utilizar la app.', textAlign: TextAlign.center, style: TextStyle(fontSize: 20),),
+            const SizedBox(height: 20,),
             ElevatedButton(
-                onPressed: () => confirmation(confirmationEmail), child: Text('Inicio'))
+                onPressed: () => confirmation(confirmationEmail),
+                child: const Text('Inicio'))
           ],
         ),
       ),
